@@ -8,7 +8,7 @@
           <li class="card card-li-4" v-for="(ins) in instanceList" :key="ins.id">
             <a @click="goDetail(ins.id)">
               <div class="img" :style="{'background-image':`url(${ins.imgUrl})` }"></div>
-              <div class="title" :title="ins.title">{{ins.title}}</div>
+              <div class="title" :title="ins.name">{{ins.name}}</div>
               <div class="desc" :title="ins.description">{{ins.description}}</div>
             </a>
           </li>

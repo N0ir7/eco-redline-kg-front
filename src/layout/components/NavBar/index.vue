@@ -44,7 +44,7 @@
             >知识管理</template
           ></el-menu-item
         >
-        <el-menu-item index="Detail"
+        <el-menu-item index="Detail" disabled
           ><template slot="title"
             ><svg class="icon" aria-hidden="true">
               <use xlink:href="#icon-a-yunyingshaicha2x"></use></svg
@@ -73,17 +73,16 @@ export default {
   },
   data() {
     return {
-      activeIndex: "Home",
+      activeIndex: "Home", // 当前所在页面
       bgColor: "url(/images/1.jpg) no-repeat center center fixed",
-      isWhite: false,
-      hideTitle: false,
+      hideTitle: false, // 是否隐藏标题
     };
   },
   methods: {
     handleSelect(key) {
       // console.log(key, keyPath);
-      if (this.$route.name !== key) {
-        this.$router.push({ name: key });
+      if (this.$route.name !== key) { // 不允许多次点击同一个导航栏
+        this.$router.push({ name: key }); // 跳转至指定页面
       }
     },
     onClickSearch() {
@@ -91,8 +90,15 @@ export default {
     },
   },
   mounted() {
-    this.$bus.$on("onClickSearch", this.onClickSearch);
+    this.$bus.$on("onClickSearch", this.onClickSearch); // 监测搜索栏传来的信号,以隐藏或显示标题
+    // console.log(this.$route);
   },
+  watch:{ // 时刻监视路由path来改变导航栏的的当前页面的显示
+    '$route.name':function(newVal){
+      // console.log(this.$route.name);
+      this.activeIndex = newVal;
+    }
+  }
 };
 </script>
 

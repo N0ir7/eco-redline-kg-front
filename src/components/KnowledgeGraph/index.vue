@@ -6,35 +6,36 @@
 
 <script>
 import * as d3 from "d3";
-// import miserables from "./json/miserable.json"
-import graph from "./json/BillGraph.json";
-// import {mapGetters} from 'vuex'
+
+import {getGraphByNodeId} from '@/api/detail'
 export default {
+  props:['graph','centerId',"canExpand"], // graph: 传入的图谱数据; centerId, 图谱的中心元素; canExpand: 是否支持可拓展 
   data() {
     return {
-      svg: null,
-      nodes: [],
-      links: [],
-      rawNodes: [],
-      rawLinks: [],
-      linkSelection: [],
-      nodeSelection: [],
-      nodesNameSelection: [],
+      svg: null, // 图谱容器
+      nodes: [], // 节点
+      links: [], // 边
+      rawNodes: [], // 原节点
+      rawLinks: [], // 原边
+      linkSelection: [], // 边的Selection
+      nodeSelection: [], // 节点的Selection
+      nodesNameSelection: [], 
       linksNameSelection: [],
       imagesSelection: [],
-      simulation: null,
+      simulation: null, // 物理模拟系统
       clipSelection: [],
-      selectId: 0,
-      selectNodesSet: new Set(),
+      selectId: 0, // 被选中的节点id
+      selectNodesSet: new Set(), // 被选中过的点集合
       options: {
         nodeIdFun: (d) => d.id,
         // nodeGroupFun: (d) => d.group,
         nodeTitleFun: (d) => `${d.name}`,
-        nodeImageFun: (d) => `${d.backgroundImage}`,
+        nodeImageFun: (d) => `${d.imgUrl}`,
         linkSourceFun: (d) => d.from,
         linkTargetFun: (d) => d.to,
         linkIdFun: (d) => d.id,
-        labelFun: (d) => d.label,
+        linkDescFun: (d) => d.description,
+        labelFun: (d) => d.name,
         linkStrokeOpacity: 1,
         linkStroke: "#fff",
         nodeStroke: "#000",
@@ -42,20 +43,27 @@ export default {
         height: 500,
         nodeRadius: 30,
         nodeFill: "#FFF",
-        nodeStrength: -500,
+        nodeStrength: -1000,
         linkStrokeWidth: 1, // 边的宽度
         linkStrokeLinecap: "round", // 线帽，即线两端的形状
       },
     };
   },
   mounted() {
-    this.createForceGraph(graph, this.options);
+    this.init();
   },
   computed:{
-    // ...mapGetters('detail',['graph'])
   },
   methods: {
-    init() {},
+    init() {
+        this.$nextTick(function(){ // 第一次加载时是空的,所以要nextTick一下,因为这个图谱构建不好watch
+          this.createForceGraph(this.graph, this.options);
+          if(this.centerId){
+            this.selectNodesSet.add(this.centerId);
+          }   
+        })
+      
+    },
     createForceGraph(
       {
         nodes, // 节点数组
@@ -75,6 +83,7 @@ export default {
         linkSourceFun = ({ source }) => source, // 提取边当中的源节点函数
         linkTargetFun = ({ target }) => target, // 提取边当中的目标节点函数
         linkIdFun = (d) => d.id,
+        linkDescFun = (d) => d.desc,
         labelFun = ({ label }) => label,
         linkStroke = "#999", // 边的颜色
         linkStrokeOpacity = 0.8, // 边的透明度
@@ -95,6 +104,7 @@ export default {
         target: linkTargetFun(d),
         label: labelFun(d),
         id: linkIdFun(d),
+        description: linkDescFun(d)
       })); // 将links数组重新包装
       this.rawLinks = links;
       // 进行一些力模型的预处理
@@ -105,7 +115,7 @@ export default {
       if (linkStrength !== undefined) forceLink.strength(linkStrength);
 
       const forceCollide = d3.forceCollide(nodeRadius); // 碰撞检测
-      const forceCenter = d3.forceCenter(width / 2, height / 2); // 向心力的中心
+      // const forceCenter = d3.forceCenter(width / 2, height / 2); // 向心力的中心
 
       // 生成一个物理模拟引擎
       this.simulation = d3
@@ -113,14 +123,14 @@ export default {
         .force("link", forceLink)
         .force("charge", forceNode)
         .force("collide", forceCollide)
-        .force("center", forceCenter);
+        // .force("center", forceCenter);
       // this.simulation = this.generateSimulationEngine(links,nodes);
       // 生成一块画布
       this.svg = d3
         .select(".chart")
         .attr("width", width)
         .attr("height", height)
-        .attr("viewBox", [0, 0, width, height]) // 视图空间，相当于我们的截图放大
+        .attr("viewBox", [-width, -height/2, width, height]) // 视图空间，相当于我们的截图放大
         .attr("font-family", "sans-serif")
         .attr("font-size", 10)
         .attr("text-anchor", "middle")
@@ -173,7 +183,8 @@ export default {
         .append("textPath")
         .attr("xlink:href", (d) => "#text-path-" + linkIdFun(d))
         .attr("startOffset", "50%")
-        .text((d) => d.label);
+        .text((d) => d.label)
+        .on('click',this.onLinkClicked);
       // 先加入节点的容器
       this.nodeSelection = g
         .append("g")
@@ -271,22 +282,20 @@ export default {
           .attr("fill", "#fff");
       }
     },
-    onError(e) {
-      // 当图片显示错误的回调函数
+    onError(e) { // 当图片显示错误的回调函数
       d3.select(e.currentTarget).style("display", "none");
     },
-    drag(simulation) {
-      // 用于物理引擎仿真的拖拽函数
-      function dragstarted(event) {
+    drag(simulation) { // 用于物理引擎仿真的拖拽函数
+      function dragstarted(event) { // 拖拽开始时
         if (!event.active) simulation.alphaTarget(0.3).restart();
       }
 
-      function dragged(event) {
+      function dragged(event) { // 拖拽过程中
         event.subject.fx = event.x;
         event.subject.fy = event.y;
       }
 
-      function dragended(event) {
+      function dragended(event) { // 拖拽结束时
         if (!event.active) simulation.alphaTarget(0);
       }
       return d3
@@ -295,23 +304,98 @@ export default {
         .on("drag", dragged)
         .on("end", dragended);
     },
-    onClicked(e, d) {
+    getRawLinks(links){ // 将d3物理引擎托管的links解除出来,包装成一开始的links
+      return links.map((d)=>({
+            source: this.options.nodeIdFun(d.source),
+            target: this.options.nodeIdFun(d.target),
+            label: d.label,
+            id: this.options.linkIdFun(d),
+            description: this.options.linkDescFun(d)
+          }))
+    },
+    packageLinks(links){ // 将请求的response中的data中的links包装成可以交给d3托管的格式
+      return d3.map(links, (d) => ({
+            source: this.options.linkSourceFun(d),
+            target: this.options.linkTargetFun(d),
+            label: this.options.labelFun(d),
+            id: this.options.linkIdFun(d),
+            description:this.options.linkDescFun(d)
+          }))
+    },
+    debug(obj){ // 用于debug输出的函数
+      if(obj instanceof Set){
+        return obj
+      }
+      return JSON.parse(JSON.stringify(obj));
+    },
+    async onClicked(e, d) { // 当节点被点击时的回调函数
+      // 固定当前节点
       d.fx = d.x;
       d.fy = d.y;
-      this.selectId = e.currentTarget.id.split("-")[1];
+      // 选中该节点
+      this.selectId = d.id;
       this.selectNodesSet.add(this.selectId);
+      // 将该节点信息传给detailpanel去显示
       this.$bus.$emit(
         "displayNodeInfo",
-        graph.nodes.filter(
+        this.rawNodes.filter(
           (d) => this.options.nodeIdFun(d) === this.selectId
         )[0]
       );
       // 将被点击的边框设为橙色
       d3.select(e.currentTarget).select("circle").attr("stroke", "#ee8031");
+
+      if(this.canExpand){ // 如果需要支持可拓展
+        // 去服务器请求被点击节点的相关数据
+        await getGraphByNodeId(this.selectId).then((res)=>{
+           // 先统计一下当前有哪些节点
+          let nodesSet = new Set(
+            this.rawNodes
+              .map((d) => this.options.nodeIdFun(d))
+          );
+          // 将查询来的节点和原来的节点合并,注意要去重
+          res.data.data.nodes.forEach(d => {
+            if(!nodesSet.has(this.options.nodeIdFun(d))){
+              nodesSet.add(this.options.nodeIdFun(d));
+              this.rawNodes.push(d);
+            }
+          });
+          // 先统计一下当前有哪些边
+          let linksSet = new Set(
+            this.rawLinks
+              .map((d) => this.options.linkIdFun(d))
+          );
+          // 为了统一格式,先将之前被d3的物理引擎托管的边解封成托管前的边数据(数据格式有些不一样)
+          this.rawLinks = this.getRawLinks(this.rawLinks);
+          // 将刚刚从服务器请求得到的response里的边信息包装成能被d3托管的边数据,然后和之前的边数据进行合并,并且注意要去重
+          this.packageLinks(res.data.data.links).forEach(d => {
+            if(!linksSet.has(this.options.linkIdFun(d))){
+              linksSet.add(this.options.linkIdFun(d));
+              this.rawLinks.push(d);
+            }
+          });
+        })
+        // 因为之前只是简单地将原数据和新数据合并,其中有一些是我们不需要,需要隐藏并删除的数据,所以需要更新数据(带拓展版)
+        this.updateDataWithExp()
+      }
+      else{
+        // 更新数据(不带拓展版)
+        this.updateData();
+      }
+      // 更新图谱,重新渲染
       this.updateGraph();
     },
-    ticked() {
-      // 用于时间推进更新节点坐标的函数
+    onLinkClicked(e,d){ // 当边被点击时的回调函数
+      let id = d.id;
+      // 将边的信息传递给detailpanel进行展示
+      this.$bus.$emit(
+        "displayLinkInfo",
+        this.rawLinks.filter(
+          (d) => this.options.linkIdFun(d) === id
+        )[0]
+      );
+    },
+    ticked() { // 用于时间推进更新节点坐标的函数
       this.linkSelection.select("path").attr("d", (d) => {
         let midX = (d.source.x + d.target.x) / 2;
         let midY = (d.source.y + d.target.y) / 2;
@@ -335,7 +419,7 @@ export default {
         .attr("x", (d) => d.x - this.options.nodeRadius)
         .attr("y", (d) => d.y - this.options.nodeRadius);
     },
-    updateGraph() {
+    updateData(){ // 更新数据,不带拓展版
       let relatedNodesIdSet = new Set(
         this.rawLinks
           .filter((d) => this.options.nodeIdFun(d.source) === this.selectId)
@@ -350,7 +434,27 @@ export default {
           tmpNodeSet.has(this.options.nodeIdFun(d.source)) &&
           tmpNodeSet.has(this.options.nodeIdFun(d.target))
       );
-
+    },
+    updateDataWithExp(){ // 更新数据,带拓展版
+      let relatedNodesIdSet = new Set(
+        this.rawLinks
+          .filter((d) => d.source === this.selectId || d.target === this.selectId)
+          .map((d) => d.target===this.selectId?d.source:d.target)
+      );
+      let tmpNodeSet = d3.union(relatedNodesIdSet, this.selectNodesSet);
+      this.nodes = this.rawNodes.filter((d) =>
+        tmpNodeSet.has(this.options.nodeIdFun(d))
+      );
+      this.links = this.rawLinks.filter(
+        (d) =>
+          tmpNodeSet.has(d.source) &&
+          tmpNodeSet.has(d.target)
+      );
+      // 这两步很关键,用筛选后数据覆盖原始数据,因为带拓展,所以其对节点的操作不是隐藏,而是直接删除,所以可以直接覆盖,不需要保留原始数据
+      this.rawNodes = this.nodes;
+      this.rawLinks = this.links;
+    },
+    updateGraph() { // 重新渲染图谱
     this.simulation.nodes(this.nodes);
       this.simulation.force("link").links(this.links);
       this.nodeSelection = this.nodeSelection.data(this.nodes, this.options.nodeIdFun).join(
@@ -427,7 +531,8 @@ export default {
           .append("textPath")
           .attr("xlink:href", (d) => "#text-path-" + this.options.linkIdFun(d))
           .attr("startOffset", "50%")
-          .text((d) => d.label)),
+          .text((d) => d.label))
+          .on('click',this.onLinkClicked),
 
         (update)=>update,
         (exit)=>exit.transition().duration(500).ease(d3.easeLinear).style('opacity',0).remove()

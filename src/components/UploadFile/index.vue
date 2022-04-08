@@ -23,7 +23,7 @@ export default {
     }
   },
 methods: {
-  handleClick(e){
+  handleClick(e){ // 选择好文件后,将文件上传
     const files = e.target.files;
       const rawFile = files[0]; // only use files[0]
       if (!rawFile) return;
@@ -31,9 +31,10 @@ methods: {
   },
   handleUpload(e){
     console.log(e);
+    // 上传使用原生的input元素实现,但是组件使用自己的,所以将input设置为不可见,组件去手动触发input的点击事件,以此选择上传的文件
     this.$refs['excel-upload-input'].click();
   },
-  handleDragover(e){
+  handleDragover(e){ // 处理将文件拖入框中
 
       e.stopPropagation();
       e.preventDefault();
@@ -57,10 +58,10 @@ methods: {
       this.upload(rawFile);
   },
 
-    isTextFile(file) {
+    isTextFile(file) { // 检测是否是支持的文件格式
       return /\.(txt|pdf|csv)$/.test(file.name);
     },
-  upload(rawFile) {
+  upload(rawFile) { // 上传文件
       this.$refs['excel-upload-input'].value = null; // fix can't select the same excel
 
       // if (!this.beforeUpload) {
@@ -69,10 +70,10 @@ methods: {
       // }
       // const before = this.beforeUpload(rawFile)
       // if (before) {
-        this.readerData(rawFile);
+        this.readerData(rawFile); // 读取上传的数据
       // }
     },
-    readerData(rawFile) {
+    readerData(rawFile) { // 读取上传的数据
       this.loading = true;
       return new Promise((resolve) => {
         const reader = new FileReader()

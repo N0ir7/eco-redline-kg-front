@@ -48,12 +48,11 @@
 <script>
 export default {
   props:{
-    list:Array,
-    editTable:Function,
+    list:Array, // 需要渲染的数据
+    editTable:Function, // 渲染图谱
   },
   data(){
     return{
-      editList:[],
       isEdit:false,
     }
   },
@@ -73,6 +72,7 @@ export default {
             type: "success",
             message: "提交成功!",
           });
+          this.editTable() // 渲染图谱
         })
         .catch(() => {
           this.$message({

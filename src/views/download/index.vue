@@ -109,8 +109,8 @@ export default {
     }
   },
   methods: {
-    handleClick(row){
-      console.log(row);
+    handleClick(){
+      // console.log(row);
     },
     info(type){
       return this.typeMap[type];

@@ -19,18 +19,20 @@
             v-model="textarea" class="textarea"
           >
           </el-input>
-
+          <div>
           <el-button class = "button" icon="el-icon-delete" @click="clearTextarea"
             >清空</el-button
           >
           <el-button class = "button" type="primary" icon="el-icon-upload" @click="uploadText">上传</el-button>
+          </div>
         </div>
         <upload v-if="uploadType == 2" :on-success="handleSuccess" />
       </transition>
+
        <edit-table :list="result" :editTable="edit"/>
     </div>
-    <div class="graph-modeling">
-      <graph />
+    <div class="graph-modeling" v-if="success">
+      <graph :graph="graph" :centerId="1" :canExpand="false"/>
     </div>
   </div>
 </template>
@@ -60,8 +62,38 @@ export default {
       ],
       uploadType: "",
       textarea: "",
-      result:[]
+      result:[],
+      success:false,
     };
+  },
+  computed:{
+    graph(){
+      let nodes = [];
+      let links = [];
+      this.result.forEach((d)=>{
+        nodes.push({
+          id:d.subId,
+          description:d.subDesc,
+          name:d.subject
+        })
+        nodes.push({
+          id:d.objId,
+          description:d.objDesc,
+          name:d.object
+        })
+        links.push({
+          id:d.id,
+          description:d.description,
+          from: d.subId,
+          to: d.objId,
+          name:d.relation
+        })
+      })
+      return{
+        nodes,
+        links
+      }
+    }
   },
   methods: {
     handleSuccess(data) {
@@ -69,24 +101,30 @@ export default {
           message: '上传成功',
           type: 'success'
         });
-      console.log(data);
+      console.log("上传数据",data);
       // 处理数据
       this.result = [
           {
               id:1,
-              subject:'丹江口水库',
               relation:'属于',
-              object:'国家保护区',
+              description:'正在升级中',
+              subject:'丹江口水库',
               subDesc:"丹江口水库是我国一级保护区",
-              objDesc:"国家规划的不能用于经济建设的地区"
+              subId:1,
+              object:'国家保护区',
+              objDesc:"国家规划的不能用于经济建设的地区",
+              objId:2,
           },
           {
               id:2,
-              subject:'生物多样性',
               relation:'计算',
-              object:'npp计算公式',
+              description:'正在升级中',
+              subject:'生物多样性',
               subDesc:"描述生物种类的丰富程度",
-              objDesc:"npp = sqrt(x)"
+              subId:3,
+              object:'npp计算公式',
+              objDesc:"npp = sqrt(x)",
+              objId:4
           },
       ]
     },
@@ -117,7 +155,7 @@ export default {
         });
     },
     edit(){
-
+      this.success = true;
     }
   },
 };
@@ -132,6 +170,11 @@ export default {
     flex-direction: column;
     align-items: center;
     gap:20px;
+    .manual-input{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     .textarea-enter-active,
     .textarea-leave-active {
       transition: all 0.25s;

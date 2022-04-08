@@ -1,39 +1,17 @@
 <template>
   <el-card class="box-card detail-panel" shadow="hover">
     <div slot="header" class="clearfix">
-      <span>节点信息</span>
+      <span>{{ title }}</span>
     </div>
     <div class="text item">
       <table cellspacing="30">
         <tbody>
-          <tr v-for="(v, k) in currentNode" :key="k">
+          <tr v-for="(v, k) in currentInfo" :key="k">
             <td class="detail-key">{{ k }}:</td>
             <td class="detail-value"><span v-html="v"></span></td>
           </tr>
         </tbody>
       </table>
-
-      <el-form ref="form" label-width="0px" v-show="ifShow">
-        <el-form-item>
-          <el-select
-            v-model="currentType"
-            placeholder="请选择查询关系"
-            class="type-select"
-          >
-            <el-option
-              v-for="(type, i) in relationshipTypes"
-              :label="type"
-              :value="urls[i]"
-              :key="type"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="onSubmit" class="submit-btn"
-            >查询关系</el-button
-          >
-        </el-form-item>
-      </el-form>
     </div>
   </el-card>
 </template>
@@ -43,33 +21,40 @@ export default {
   name: "DetailPanel",
   data() {
     return {
-      ifShow: false,
-      currentNode: {},
-      currentType: "",
-      relationshipTypes: [
-        "ACTED_IN",
-        "DIRECTED",
-        "WROTE",
-        "PRODUCED",
-        "REVIEWED",
-      ],
-      urls: ["actedby", "directed", "wrote", "produced", "reviewed"],
+      currentInfo: {}, // 存储需要显示的信息
+      title: "详细信息",
     };
   },
-  
-    mounted() {
-        this.$bus.$on('displayNodeInfo',this.getNodeInfo);
-    },
+  mounted() {
+    this.$bus.$on("displayNodeInfo", this.getNodeInfo); // 监听是否有传过来的节点信息需要进行展示
+    this.$bus.$on("displayLinkInfo", this.getLinkInfo); // 监听是否有传过来的边信息需要进行展示
+  },
   methods: {
-      getNodeInfo(node){
-        // console.log(node);
-        this.currentNode = {
-            id:node.id,
-            name:node.name,
-            summary:node.summary
-        };
-      },
-    onSubmit() {},
+    getNodeInfo(node) { // 接受传过来的节点信息并作包装
+      this.currentInfo = {
+        nodeId: node.id,
+        name: node.name,
+        description: node.description,
+      };
+      this.title = "节点信息";
+    },
+    getLinkInfo(link) { // 接受传过来的边信息并作包装
+      this.currentInfo = {
+        linkId: link.id,
+        relation:
+          "<strong>" +
+          link.source.name +
+          "</strong>" +
+          " --【 " +
+          link.label +
+          " 】--> " +
+          "<strong>" +
+          link.target.name +
+          "</strong>",
+        description: link.description,
+      };
+      this.title = "关系信息";
+    }
   },
 };
 </script>
@@ -81,19 +66,18 @@ export default {
   border-radius: 4px;
   width: 40%;
   cursor: pointer;
-  td{
+  td {
     text-align: left;
     vertical-align: text-top;
-    
   }
   .detail-key {
     width: auto;
     font-weight: bolder;
-    font-size: 20px;
+    font-size: 25px;
   }
-  .detail-value{
-      width: 100%;
-      font-size: 12px;
+  .detail-value {
+    width: 100%;
+    font-size: 20px;
   }
   .type-select {
     margin-top: 25px;

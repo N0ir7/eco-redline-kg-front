@@ -1,30 +1,29 @@
 import {getInstanceList} from '@/api/home.js'
 
 const state={
-  instanceListData:[]
+  instanceInfo:{}
 }
 const mutations={
-  GET_INSTANCE_LIST:(state,list)=>{
-    state.instanceListData = list||[];
+  GET_INSTANCE_LIST:(state,info)=>{
+    state.instanceInfo = info.data||{};
   }
 }
 const actions={
   async getInstanceList({commit},num){
-    let list
+    let info
     if(num){
-      list = await getInstanceList(num);
+      info = await getInstanceList(num);
     }else{
-      list = await getInstanceList();
+      info = await getInstanceList();
     }
-    // console.log('list',list);
-    if(list.data){
-      commit('GET_INSTANCE_LIST',list.data);
+    if(info.data){
+      commit('GET_INSTANCE_LIST',info.data);
     }
   }
 }
 const getters= {
   instanceList(state){
-    return state.instanceListData.data;
+    return state.instanceInfo.instances||[];
   }
 }
 
